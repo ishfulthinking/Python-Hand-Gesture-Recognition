@@ -231,6 +231,7 @@ def write_on_image(frame, hand):
         elif hand.fingers == 2:
             text = "Scissors"
     
+    cv2.putText(frame, text, (10,20), cv2.FONT_HERSHEY_COMPLEX, 0.4,(0  ,  0,  0),2,cv2.LINE_AA)
     cv2.putText(frame, text, (10,20), cv2.FONT_HERSHEY_COMPLEX, 0.4,(255,255,255),1,cv2.LINE_AA)
 ```
 
@@ -238,7 +239,7 @@ Then, add the helper function to the main function so it can be called, just bef
 
 ```python
 ... # Write the action the hand is doing on the screen.
-    write_on_image(display_frame, handData)
+    write_on_image(display_frame, hand)
 ```
 
 Now the application will be more organized later on (less headaches!) and we can check the 
