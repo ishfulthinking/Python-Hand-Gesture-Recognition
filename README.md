@@ -355,6 +355,7 @@ Add these lines to the previous if statement that calls get_average():
     else:
         region_pair = segment(region)
         if region_pair is not None:
+            # If we have the regions segmented successfully, show them in another window for the user.
             (thresholded_region, segmented_region) = region_pair
             cv2.drawContours(region, [segmented_region], -1, (255, 255, 255))
             cv2.imshow("Segmented Image", region)
@@ -388,9 +389,9 @@ Let's create a new function that gets the hand's dimensions, center, etc. so we 
 both for detecting waving and for counting fingers later on.  
 
 ```python
-def getHandData(thresholded_img, segmented_img):
+def get_hand_data(thresholded_image, segmented_image):
     # Enclose the area around the extremities in a convex hull to connect all outcroppings.
-    convexHull = cv2.convexHull(segmented)
+    convexHull = cv2.convexHull(segmented_image)
     
     # Find the extremities for the convex hull and store them as points.
     top    = tuple(convexHull[convexHull[:, :, 1].argmin()][0])
@@ -405,31 +406,34 @@ def getHandData(thresholded_img, segmented_img):
 We will call the constructor if the object is null, and update its data if it already exists:  
 
 ```python
-    # We put all the info into an object for handy extraction (get it? handy?)
-    if handData == None:
-        handData = Hand(top, bottom, left, right, centerX)
+    # We put all the info into an object for handy extraction (get it? HANDy?)
+    if hand == None:
+        hand = HandData(top, bottom, left, right, centerX)
     else:
-        handData.update(top, bottom, left, right)
+        hand.update(top, bottom, left, right)
 ```  
 
 ### Step 4b: Create a function for the handData object to check for waving  
 
 It would be difficult to check for waving every frame, as that would require the user to wave 
-their hand VERY quickly every single frame. Instead, let's check every fourth frame if the 
-center of the user hand has moved significantly, since that would be a better indicator of waving.  
+their hand VERY quickly over a large area every single frame. Instead, let's check every eigth 
+frame to see if the center of the user hand has moved significantly, since that would be a better 
+indicator of waving.  
 
-In the getHandData() function we just created, append this:  
+In the get_hand_data() function we just created, append this:  
 
 ```python
-    if frames_elapsed % 4 == 0:
+    if frames_elapsed % 8 == 0:
         handData.checkForWaving(centerX)
 ```  
 
-Within the Hand class itself, create the function checkForWaving(). It'll update the current centerX 
-and previous centerX of the hand, then check if they differ enough to signify waving:  
+Next, within the Hand class itself from way before, create the function check_for_waving(). 
+It'll update the current centerX and previous centerX of the hand, then check if they differ 
+enough to signify waving. The boolean flag within the hand object will automatically switch on 
+the "Waving" action in write_on_image() from before!
 
 ```python
-    def checkForWaving(self, centerX):
+    def check_for_waving(self, centerX):
         self.prevCenterX = self.centerX
         self.centerX = centerX
         
@@ -438,5 +442,16 @@ and previous centerX of the hand, then check if they differ enough to signify wa
         else:
             handData.isWaving = False
 ```  
+
+And finally, add the get_hand_data() call to the main function after calling cv2.imshow() on the segmented image:  
+
+```python
+            # If we have the regions segmented successfully, show them in another window for the user.
+            (thresholded_region, segmented_region) = region_pair
+            cv2.drawContours(region, [segmented_region], -1, (255, 255, 255))
+            cv2.imshow("Segmented Image", region)
+            
+            get_hand_data(thresholded_region, segmented_region)
+```
 
 If all has gone according to plan, your program should now recognize waving!  
