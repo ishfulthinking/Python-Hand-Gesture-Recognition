@@ -78,11 +78,10 @@ capture = cv2.VideoCapture(0)
 And then write a loop immediately after it to actually read frames from the camera constantly, until the user presses x to exit:  
 ```python
 while (True):
-    # Store the frame from the video capture and resize it to the window size.
+    # Store the frame from the video capture and resize it to the desired window size.
     ret, frame = capture.read()
     frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
 
-    # Show the previously captured frame.
     cv2.imshow("Camera Input", frame)
     # Check if user wants to exit.
     if (cv2.waitKey(1) & 0xFF == ord('x')):
@@ -103,8 +102,9 @@ makes it confusing to use. Let's add these 2 lines right after the line beginnin
 
 Your program should now work like a mirror. Perfect!  
 
-### Step 1c: Partition the region of interest  
-Now we have to detect the user's hand. Let's first set some values for the region of interest and frame count.  
+### Step 1c: Set up variables to be used for image analysis  
+
+The last step is just to set up the region of interest's bounds and initialize frames_elapsed. 
 Within the main function, before even taking the capture of the screen, type this:  
 
 ```python
@@ -116,35 +116,16 @@ region_right = FRAME_WIDTH
 
 frames_elapsed = 0
 ```
-(Note: 0,0 is the top left pixel of the frame, and values increase as we move away from that corner.)
+##### (Note: 0,0 is the top left pixel of the frame, and values increase as we move away from that corner.)
 
-As said before, partitioning which part of the screen a hand should be in is very useful for cutting down 
-on runtime (less pixels to check for a hand) and finding where the hand is on the screen.  
-
-To make use of the program easier, we'll draw a rectangle on-screen to show where the user should put 
-their hand. We have to make sure that we add it to only a copy of the frame, since we'll need the frame intact 
-for partitioning the hand gesture.  
-
-Add these lines after the line where we flip the image:  
+and increment frames_elapsed after showing the image (i.e., calling cv2.imshow()):  
 
 ```python
-# Create a copy of the current frame solely for display, not gesture recognition.
-display_frame = frame.copy()
-
-# Draw a rectangle on-screen to show where the user should put their hand.
-cv2.rectangle(display_frame, (region_left, region_top), (region_right, region_bottom), (255,255,255), 2)
-```
-
-Since we're now using display_frame, make sure you edit your cv2.imshow() call from before to use 
-display_frame as a parameter, not frame anymore, and increment frames_elapsed:  
-
-```python
-cv2.imshow("Camera Input", display_frame)
 frames_elapsed += 1
 ```
 
 So now we have a program that will take input from the camera and return the frames with 
-a square drawn where the user should put their hand. Check out [checkpoint 1 to make sure you've got it right](/checkpoint1.ipynb).
+a square drawn where the user should put their hand. Check out [checkpoint 1 to make sure you've got it right](checkpoint1.ipynb).
   
   
   
@@ -153,6 +134,7 @@ a square drawn where the user should put their hand. Check out [checkpoint 1 to 
 Now that we have our base input code working, let's continue building our foundation. Before we 
 jump into coding the background differencing, finger counting, etc. let's start organized so we 
 don't have to clean up a ton later.  
+
 It would be disorganized to have a bunch of global variables for all the data of the hand, so we'll 
 create an object class to hold all that data and update it. It would also be useless to have our 
 gesture recognition functions coded without being able to print the results to the screen, so let's 
@@ -231,28 +213,33 @@ def write_on_image(frame, hand):
         elif hand.fingers == 2:
             text = "Scissors"
     
-    cv2.putText(frame, text, (10,20), cv2.FONT_HERSHEY_COMPLEX, 0.4,(0  ,  0,  0),2,cv2.LINE_AA)
+    cv2.putText(frame, text, (10,20), cv2.FONT_HERSHEY_COMPLEX, 0.4,( 0 , 0 , 0 ),2,cv2.LINE_AA)
     cv2.putText(frame, text, (10,20), cv2.FONT_HERSHEY_COMPLEX, 0.4,(255,255,255),1,cv2.LINE_AA)
+
+    # Highlight the region of interest using a drawn rectangle.
+    cv2.rectangle(display_frame, (region_left, region_top), (region_right, region_bottom), (255,255,255), 2)
 ```
 
 Then, add the helper function to the main function so it can be called, just before the line with cv2.imshow():    
 
 ```python
-... # Write the action the hand is doing on the screen.
-    write_on_image(display_frame, hand)
+    # Write the action the hand is doing on the screen, and draw the region of interest.
+    write_on_image(frame, hand)
 ```
 
-Now the application will be more organized later on (less headaches!) and we can check the 
+Now the application will be more neatly organized later on (less headaches!) and we can check the 
 status of the gesture recognizer using the write_on_image function.  
+
+You should now have your input feed from before, but with a message that says "Calibrating..." at 
+first and then "No hand detected". You can check that [your code matches with checkpoint 2](checkpoint2.ipynb).
   
   
   
 ## Objective 3: Recognize when a hand is in the region of interest  
 
 Let's use the background differencing concept from before to notice when a hand is in the region 
-of interest. We need a background that we save at the beginning (which is based on the number of 
-frames elapsed since starting the program), then a function that can separate the background from 
-subsequent frames.  
+of interest. We need a background that we save at the beginning for the first CALIBRATION_TIME frames 
+after running the application, along with a function that can separate the background from subsequent frames.  
 
 ### Step 3a: Get the background ready for averaging  
 
@@ -262,29 +249,46 @@ the summarized notes, here they are:
 - As a result, it's best to convert the frame into a black & white image before processing it  
 - To avoid stray pixels (image noise) being labeled as edges, we can smoothen the image with a Gaussian blur  
 
-So let's grab the background, turn it gray, smoothen it a bit, THEN pass it into a function that 
-accumulates the averages of the background.  
+So let's grab the background and pass it into a function that crops only the area of interest, 
+turns it gray, smoothens it a bit. This way we can use it both for averaging and for segmenting later.
 
-In the main function's while loop, just after grabbing the frame through cv2.resize(), clone the frame so 
-we can edit it without editing the output frame that we'll show the user. Then we isolate the region of 
-interest from the rest of the frame:
+Create a new cell in the notebook and let's write the function get_region():  
 
 ```python
-... frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
-    
-    # Clone the resized input frame, so we can edit it without editing the display frame.
-    clone = frame.copy()
-
+def get_region(frame):
     # Separate the region of interest from the rest of the frame.
-    region = clone[region_top:region_bottom, region_left:region_right]
+    region = frame[region_top:region_bottom, region_left:region_right]
     # Make it grayscale so we can detect the edges more easily.
-    gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
-    # Use a Gaussian blur to prevent image noise from being labeled as an edge.
-    gray = cv2.GaussianBlur(gray, (7,7), 0)
-...
-```
+    region = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+    # Use a Gaussian blur to prevent frame noise from being labeled as an edge.
+    region = cv2.GaussianBlur(region, (5,5), 0)
 
-### Step 3b: Average the first frames of input to get the background
+    return region
+```  
+
+Then, in the main function, after flipping the frame using cv2.flip(), call get_region and save the result:  
+
+```python
+    # Separate the region of interest and prep it for edge detection.
+    region = get_region(frame)
+```  
+
+### Step 3b: Average the first CALIBRATION_TIME background frames  
+
+Now that we can crop the region of interest, let's write a new function to get the averages of them. 
+Create a new cell and write this function:  
+
+```python
+def get_average(region):
+    # We have to use the global keyword because we want to edit the global variable.
+    global background
+    # If we haven't captured the background yet, make the current region the background.
+    if background is None:
+        background = region.copy().astype("float")
+        return
+    # Otherwise, add this captured frame to the average of the backgrounds.
+    cv2.accumulateWeighted(region, background, BG_WEIGHT)
+```
 
 If we only take the first frame of background, we'll immediately run into issues due to lighting 
 changes. If your webcam is anything like mine, it spends its first several frames adjusting for 
@@ -294,145 +298,74 @@ Remember our frames_elapsed and CALIBRATION_TIME variables from before? This is 
 I've found that averaging the first ~30 frames of camera input is enough to overcome that obstacle of initial 
 lighting adjustments.  
 
-So let's go to the main function and, after we do the Gaussian blur, put an if statement that 
-checks if 30 frames have passed since the program first began running:  
+So let's go to the main function and, immediately after we get the region of interest using get_region(),
+write an if statement that checks if we've passed our calibration time:  
 
 ```python
-... gray = cv2.GaussianBlur(gray, (7,7), 0)
-
     if frames_elapsed < CALIBRATION_TIME:
-        get_avg(gray)
-    
-    frames_elapsed += 1
-
-...
-```
-
-Then, in a new cell in the Jupyter notebook, write the function get_avg():  
-
-```python
-# Get the average background of the first CALIBRATION_TIME frames.
-# We use a weighted average of these frames to generate the background.
-def get_avg(image):
-    if background is None:
-        background = image.copy().astype("float")
-        return
-    
-    cv2.accumulateWeighted(image, background, BG_WEIGHT)
+        get_average(region)
 ```
 
 ### Step 3c: Use differencing to isolate a hand from the background  
 
-Next, we can write a function to segment the image and mark which parts of the region of interest 
-are covered by a hand. Create a new cell in the Jupyter notebook and create the function segment().  
+Next, we have to write a function to segment the image and mark which parts of the region of interest 
+are covered by a hand.
 
 To segment the image properly, we have to follow these steps:
 - Get the absolute difference between the current frame and the previous averages of the background.
 - Threshold that difference, so the results are binary: either it's part of the background, or it isn't.
 - Get the [contours](https://datacarpentry.org/image-processing/09-contours/) of the shape we thresholded. OpenCV will do this for us and return an outline of the shape.
 
-We can see that in code form here:  
+Create a new cell in the Jupyter notebook and create the function segment():  
 
 ```python
 # Here we use differencing to separate the background from the object of interest.
-def segment(image):
+def segment(region):
+    global hand
     # Find the absolute difference between the background and the current frame.
-    diff = cv2.absdiff(background.astype(np.uint8), image)
+    diff = cv2.absdiff(background.astype(np.uint8), region)
 
-    # Threshold that image with a strict 0 or 1 ruling so only the foreground remains.
-    thresholded_image = cv2.threshold(diff, OBJ_THRESHOLD, 255, cv2.THRESH_BINARY)[1]
+    # Threshold that region with a strict 0 or 1 ruling so only the foreground remains.
+    thresholded_region = cv2.threshold(diff, OBJ_THRESHOLD, 255, cv2.THRESH_BINARY)[1]
 
-    # Get the contours of the image, which will return an outline of the hand.
-    (_, contours, _) = cv2.findContours(thresholded_image.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Get the contours of the region, which will return an outline of the hand.
+    (_, contours, _) = cv2.findContours(thresholded_region.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # If we didn't get anything, there's no hand.
     if len(contours) == 0:
-        if handData is not None:
-            handData.isInFrame = False
+        if hand is not None:
+            hand.isInFrame = False
         return
-    # Otherwise return a tuple of the filled hand (thresholded_image), along with the outline (segmented_image).
+    # Otherwise return a tuple of the filled hand (thresholded_region), along with the outline (segmented_region).
     else:
-        if handData is not None:
-            handData.isInFrame = True
-        segmented_image = max(contours, key = cv2.contourArea)
-        return (thresholded_image, segmented_image)
-```
-
-### Step 3d: Incorporate the background differencing into our main loop  
-
-After we've gotten the average of the first CALIBRATION_TIME frames, we can segment the gray version of the 
-frame. Added these two lines to the previous if statement that calls get_avg():
-
-```python
-... if frames_elapsed < CALIBRATION_TIME:
-        get_avg(gray)
-    else:
-        (thresholded_image, segmented_image) = segment(gray)
-        if (thresholded_image, segmented_image) is not None:
-            getHandData(thresholded, segmented)
-```
-
-All together, our main function now looks like this:  
-
-```python
-# Main function: Get feed from camera #
-
-# Our region of interest will be the top right part of the frame.
-region_top = 0
-region_bottom = int(2 * FRAME_HEIGHT / 3)
-region_left = 0
-region_right = int(FRAME_WIDTH / 2)
-
-frames_elapsed = 0
-
-capture = cv2.VideoCapture(0)
-
-while (True):
-    # Store the frame from the video capture and resize it to the window size.
-    ret, frame = capture.read()
-    frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
-    
-    # Clone the resized input frame, so we can edit it without editing the display frame.
-    clone = frame.copy()
-
-    # Separate the region of interest from the rest of the frame.
-    region = clone[region_top:region_bottom, region_left:region_right]
-    # Make it grayscale so we can detect the edges more easily.
-    gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
-    # Use a Gaussian blur to prevent image noise from being labeled as an edge.
-    gray = cv2.GaussianBlur(gray, (7,7), 0)
-    
-    if frames_elapsed < CALIBRATION_TIME:
-        get_avg(gray)
-    else:
-        (thresholded_image, segmented_image) = segment(gray)
-        if (thresholded_image, segmented_image) is not None:
-            getHandData(thresholded, segmented)
-    
-    frames_elapsed += 1
-
-    # Flip the frame over the vertical axis so that it works like a mirror, which is more intuitive to the user.
-    display_frame = cv2.flip(frame, 1)
-
-    # Draw a rectangle on-screen to show where the user should put their hand.
-    cv2.rectangle(display_frame, (region_right, region_top), (FRAME_WIDTH, region_bottom), (255,255,255), 2)
-
-    # Show the previously captured frame.
-    write_on_image(display_frame, handData)
-    cv2.imshow('Camera Input', display_frame)
-    # Check if user wants to exit.
-    if (cv2.waitKey(1) & 0xFF == ord('x')):
-        break
-
-# When we exit the loop, we have to stop the capture too.
-capture.release()
-cv2.destroyAllWindows()
+        if hand is not None:
+            hand.isInFrame = True
+        segmented_region = max(contours, key = cv2.contourArea)
+        return (thresholded_region, segmented_region)
 ```  
 
+After we've gotten the average of the first CALIBRATION_TIME frames, we can segment region of interest. 
+And just to test that they're working, we can also add a line that draws the segmented region!  
 
+Add these lines to the previous if statement that calls get_average():  
 
+```python
+    if frames_elapsed < CALIBRATION_TIME:
+        get_average(region)
+    else:
+        region_pair = segment(region)
+        if region_pair is not None:
+            (thresholded_region, segmented_region) = region_pair
+            cv2.drawContours(region, [segmented_region], -1, (255, 255, 255))
+            cv2.imshow("Segmented Image", region)
+```  
 
+So now your code should segment in the region of interest. You can [check how your code matches up here](checkpoint3.ipynb).
 
+We've made great headway; let's keep up the momentum!  
+  
+  
+  
 ## Objective 4: Recognize when the user waves  
 
 The first gesture we can get our program to recognize is waving -- it's easier than counting 
