@@ -1,9 +1,4 @@
 # Hand gesture recognition in Python using OpenCV
-##### TODO: Add photos for each "checkpoint"
-
-| ![Pointing](media/pointing.gif)
-| ![Scissors](media/scissors.gif)
-| ![Waving](media/waving.gif) |  
 
 This guide will teach you how to code a computer vision program that recognizes simple hand gestures:
 - Waving
@@ -93,7 +88,7 @@ cv2.destroyAllWindows()
 ```
 
 Great, now our program can take input from the camera! But you might notice it doesn't work like a mirror, which 
-makes it confusing to use. Let's add these 2 lines right after the line beginning with ```frame = ```:  
+makes it confusing to use. Let's add these 2 lines right after the line beginning with `frame = `:  
 
 ```python
     # Flip the frame over the vertical axis so that it works like a mirror, which is more intuitive to the user.
@@ -118,14 +113,16 @@ frames_elapsed = 0
 ```
 ##### (Note: 0,0 is the top left pixel of the frame, and values increase as we move away from that corner.)
 
-and increment frames_elapsed after showing the image (i.e., calling cv2.imshow()):  
+and increment frames_elapsed after showing the image (i.e., calling `cv2.imshow()`):  
 
 ```python
 frames_elapsed += 1
 ```
 
 So now we have a program that will take input from the camera and return the frames with 
-a square drawn where the user should put their hand. Check out [checkpoint 1 to make sure you've got it right](checkpoint1.ipynb).
+a square drawn where the user should put their hand. Check out [checkpoint 1 to make sure you've got it right](checkpoint1.ipynb).  
+
+![checkpoint1](media/checkpoint1.PNG)  
   
   
   
@@ -168,7 +165,7 @@ class HandData:
         isWaving = False
 ```  
 
-We'll also want an "update" function that does the same as above without creating a new object.  
+We'll also want an `update()` function that does the same as above without creating a new object.  
 
 ```python
     def update(self, top, bottom, left, right):
@@ -176,7 +173,8 @@ We'll also want an "update" function that does the same as above without creatin
         self.bottom = bottom
         self.left = left
         self.right = right
-```
+```  
+
 (You might notice that we don't update the variables related to the center of the hand nor finger count; 
 we'll do that later when we code to detect hand waving and finger count recognition.)  
 
@@ -186,7 +184,7 @@ We want to tell the user if the background is being calibrated, if the hand isn'
 how many fingers they're holding up, etc. so let's create a helper function to do exactly that.  
 
 What are the things we need it to say?  
-- "Calibrating..." if less than CALIBRATION_TIME frames have elapsed since starting the program
+- "Calibrating..." if less than `CALIBRATION_TIME` frames have elapsed since starting the program
 - "Hand not found" if a hand isn't in the region of interest
 - "Waving" if the user is waving their hand
 - The name of the gesture if they're holding fingers up  
@@ -220,7 +218,7 @@ def write_on_image(frame, hand):
     cv2.rectangle(display_frame, (region_left, region_top), (region_right, region_bottom), (255,255,255), 2)
 ```
 
-Then, add the helper function to the main function so it can be called, just before the line with cv2.imshow():    
+Then, add the helper function to the main function so it can be called, just before the line with `cv2.imshow()`:    
 
 ```python
     # Write the action the hand is doing on the screen, and draw the region of interest.
@@ -231,7 +229,9 @@ Now the application will be more neatly organized later on (less headaches!) and
 status of the gesture recognizer using the write_on_image function.  
 
 You should now have your input feed from before, but with a message that says "Calibrating..." at 
-first and then "No hand detected". You can check that [your code matches with checkpoint 2](checkpoint2.ipynb).
+first and then "No hand detected". You can check that [your code matches with checkpoint 2](checkpoint2.ipynb).  
+
+![checkpoint2](media/checkpoint2.PNG)  
   
   
   
@@ -252,7 +252,7 @@ the summarized notes, here they are:
 So let's grab the background and pass it into a function that crops only the area of interest, 
 turns it gray, smoothens it a bit. This way we can use it both for averaging and for segmenting later.
 
-Create a new cell in the notebook and let's write the function get_region():  
+Create a new cell in the notebook and let's write the function `get_region()`:  
 
 ```python
 def get_region(frame):
@@ -266,7 +266,7 @@ def get_region(frame):
     return region
 ```  
 
-Then, in the main function, after flipping the frame using cv2.flip(), call get_region and save the result:  
+Then, in the main function, after flipping the frame using `cv2.flip()`, call `get_region()` and save the result:  
 
 ```python
     # Separate the region of interest and prep it for edge detection.
@@ -294,11 +294,11 @@ If we only take the first frame of background, we'll immediately run into issues
 changes. If your webcam is anything like mine, it spends its first several frames adjusting for 
 shadows, which is not what we want for our program.  
 
-Remember our frames_elapsed and CALIBRATION_TIME variables from before? This is where they come in handy! 
+Remember our `frames_elapsed` and `CALIBRATION_TIME` variables from before? This is where they come in handy! 
 I've found that averaging the first ~30 frames of camera input is enough to overcome that obstacle of initial 
 lighting adjustments.  
 
-So let's go to the main function and, immediately after we get the region of interest using get_region(),
+So let's go to the main function and, immediately after we get the region of interest using `get_region()`,
 write an if statement that checks if we've passed our calibration time:  
 
 ```python
@@ -316,7 +316,7 @@ To segment the image properly, we have to follow these steps:
 - Threshold that difference, so the results are binary: either it's part of the background, or it isn't.
 - Get the [contours](https://datacarpentry.org/image-processing/09-contours/) of the shape we thresholded. OpenCV will do this for us and return an outline of the shape.
 
-Create a new cell in the Jupyter notebook and create the function segment():  
+Create a new cell in the Jupyter notebook and create the function `segment()`:  
 
 ```python
 # Here we use differencing to separate the background from the object of interest.
@@ -344,10 +344,10 @@ def segment(region):
         return (thresholded_region, segmented_region)
 ```  
 
-After we've gotten the average of the first CALIBRATION_TIME frames, we can segment region of interest. 
+After we've gotten the average of the first `CALIBRATION_TIME` frames, we can segment region of interest. 
 And just to test that they're working, we can also add a line that draws the segmented region!  
 
-Add these lines to the previous if statement that calls get_average():  
+Add these lines to the previous if statement that calls `get_average()`:  
 
 ```python
     if frames_elapsed < CALIBRATION_TIME:
@@ -361,9 +361,11 @@ Add these lines to the previous if statement that calls get_average():
             cv2.imshow("Segmented Image", region)
 ```  
 
-So now your code should segment in the region of interest. You can [check how your code matches up here](checkpoint3.ipynb).
+So now your code should segment in the region of interest. You can [check how your code matches up here](checkpoint3.ipynb).  
 
 We've made great headway; let's keep up the momentum!  
+
+![checkpoint3](media/checkpoint3.PNG)  
   
   
   
@@ -420,17 +422,17 @@ their hand VERY quickly over a large area every single frame. Instead, let's che
 frame to see if the center of the user hand has moved significantly, since that would be a better 
 indicator of waving.  
 
-In the get_hand_data() function we just created, append this:  
+In the `get_hand_data()` function we just created, append this:  
 
 ```python
     if frames_elapsed % 8 == 0:
         handData.checkForWaving(centerX)
 ```  
 
-Next, within the Hand class itself from way before, create the function check_for_waving(). 
-It'll update the current centerX and previous centerX of the hand, then check if they differ 
+Next, within the Hand class itself from way before, create the function `check_for_waving()`. 
+It'll update the current `centerX` and `prevCenterX` of the hand, then check if they differ 
 enough to signify waving. The boolean flag within the hand object will automatically switch on 
-the "Waving" action in write_on_image() from before!
+the "Waving" action in `write_on_image()` from before!
 
 ```python
     def check_for_waving(self, centerX):
@@ -443,7 +445,7 @@ the "Waving" action in write_on_image() from before!
             handData.isWaving = False
 ```  
 
-And finally, add the get_hand_data() call to the main function after calling cv2.imshow() on the segmented image:  
+And finally, add the `get_hand_data()` call to the main function after calling `cv2.imshow()` on the segmented image:  
 
 ```python
             # If we have the regions segmented successfully, show them in another window for the user.
@@ -454,4 +456,7 @@ And finally, add the get_hand_data() call to the main function after calling cv2
             get_hand_data(thresholded_region, segmented_region)
 ```
 
-If all has gone according to plan, your program should now recognize waving!  
+If all has gone according to plan, your program should now recognize waving! If you're having issues, 
+try [referencing the checkpoint4 Jupyter Notebook](checkpoint4.ipynb).  
+
+![checkpoint4](media/checkpoint4.PNG)  
