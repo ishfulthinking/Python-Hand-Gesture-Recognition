@@ -460,3 +460,102 @@ If all has gone according to plan, your program should now recognize waving! If 
 try [referencing the checkpoint4 Jupyter Notebook](checkpoint4.ipynb).  
 
 ![checkpoint4](media/checkpoint4.PNG)  
+  
+
+
+## Objective 5: Count fingers  
+
+### Step 5a: Create a function to count fingers crudely  
+
+Now it's time to complete our last goal: recognizing gestures that involve counting the number of 
+extended fingers. What's the easiest way to do this? 
+1. Draw a line across object but just beneath the top
+2. Move across from left to right, noting the number of times we intersect the object
+    - Count the number of shapes separated by gaps, these are likely fingers
+    - If a shape is particularly large and there's only one, we're likely looking at a fist
+3. Update `hand.fingers` variable so `write_on_image()` can display the right result  
+
+So let's get started by creating a new function, `count_fingers()`, in its own cell:  
+
+```python
+def count_fingers(thresholded_image):
+    
+    # Find the height at which we will draw the line to count fingers.
+    line_height = int(hand.top[1] + (0.2 * (hand.bottom[1] - hand.top[1])))
+    
+    # Get the linear region of interest along where the fingers would be.
+    line = np.zeros(thresholded_image.shape[:2], dtype=int)
+    
+    # Draw a line across this region of interest.
+    cv2.line(line, (thresholded_image.shape[1], line_height), (0, line_height), 255, 1)
+    
+    # Do a bitwise AND to find where the line intersected the hand -- this is where the fingers are!
+    line = cv2.bitwise_and(thresholded_image, thresholded_image, mask = line.astype(np.uint8))
+    
+    # Get the line's new contours. The contours are basically just little lines formed by gaps 
+    # in the big line across the fingers, so each would be a finger unless it's very wide.
+    (_, contours, _) = cv2.findContours(line.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    
+    fingers = 0
+    
+    # Count the fingers by making sure the contour lines are "finger-sized", i.e. not too wide.
+    # This prevents a "rock" gesture from being mistaken for a finger.
+    for curr in contours:
+        width = len(curr)
+        
+        if width < 3 * abs(hand.right[0] - hand.left[0]) / 4 and width > 5:
+            fingers += 1
+    
+    return fingers
+```  
+
+Then, update `get_hand_data()` to call the new function on every frame by appending this:  
+
+```python
+hand.fingers = count_fingers(thresholded_image)
+```
+
+Great! Now our program automatically outputs the current gesture based on what's going on in the 
+current frame. But you might notice it can be erratic, quickly switching from gesture to gesture. 
+So let's make it smarter by creating a list of observed gestures, then make it choose the most 
+common of all the gestures.  
+
+### Step 5b: Create a list of gestures to choose the most frequent one  
+
+Let's create a new cell and make a basic function for finding the most frequent entry in a list:  
+
+```python
+def most_frequent(input_list):
+    dict = {}
+    count = 0
+    most_freq = 0
+    
+    for item in reversed(input_list):
+        dict[item] = dict.get(item, 0) + 1
+        if dict[item] >= count :
+            count, most_freq = dict[item], item
+    
+    return most_freq
+```
+##### (This is the last function we create... hooray!)  
+
+Then, create the list inside the `HandData` class with its other variables:  
+
+```python
+gesture_list = []
+```  
+
+And finally, edit the function call inside `get_hand_data()` so that it appends to `hand.gestureList` and  
+chooses the most frequent after 12 frames, then clears the list:  
+
+```python
+    # We count the number of fingers up every frame, but only change hand.fingers if
+    # 12 frames have passed, to prevent erratic gesture counts.
+    hand.gestureList.append(count_fingers(thresholded_image))
+    if frames_elapsed % 12 == 0:
+        hand.fingers = most_frequent(hand.gestureList)
+        hand.gestureList.clear()
+```  
+
+And that's it! You're finished creating a program to recognize gestures using the OpenCV library 
+in Python. Congrats! (If you have any hiccups with the code, [reference checkpoint5](checkpoint5.ipynb))  
