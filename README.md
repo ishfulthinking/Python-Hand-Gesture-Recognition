@@ -8,10 +8,28 @@ This guide will teach you how to code a computer vision program that recognizes 
 
 The easiest way to get this running is to use a Jupyter Notebook, which allows you to write your Python 
 code in modules and run each individually or as a group.  
-  
 
+## Table of Contents
+- [Objective 0: Get acquainted and plan ahead](#Objective-0:-Get-acquainted-and-plan-ahead)
+- [Objective 1: Write the base for the program](#Objective-1:-Write-the-base-for-the-program)
+  - [Step 1a: Import libraries and create global variables](#Step-1a:-Import-libraries-and-create-global-variables)
+  - [Step 1b: Write a loop to get camera input](#Step-1b:-Write-a-loop-to-get-camera-input)
+  - [Step 1c: Set up variables for image analysis](#Step-1c:-Set-up-variables-for-image-analysis)
+- [Objective 2: Create tools for hand data and screen writing](#Objective-2:-Create-tools-for-hand-data-and-screen-writing)
+  - [Step 2a: Create an object class to hold hand data](#Step-2a:-Create-an-object-class-to-hold-hand-data)
+  - [Step 2b: Create a function that writes hand data on the screen](#Step-2b:-Create-a-function-that-writes-hand-data-on-the-screen)
+- [Objective 3: Recognize when a hand is in the region of interest](#Objective-3:-Recognize-when-a-hand-is-in-the-region-of-interest)
+  - [Step 3a: Get the background ready for averaging](#Step-3a:-Get-the-background-ready-for-averaging)
+  - [Step 3b: Average the first CALIBRATION_TIME background frames](#Step-3b:-Average-the-first-CALIBRATION_TIME-background-frames)
+  - [Step 3c: Use differencing to isolate a hand from the background](#Step-3c:-Use-differencing-to-isolate-a-hand-from-the-background)
+- [Objective 4: Recognize when the user waves](#Objective-4:-Recognize-when-the-user-waves)
+  - [Step 4a: Program the system to get the hand's center point](#Step-4a:-Program-the-system-to-get-the-hand's-center-point)
+  - [Step 4b: Create a function for handData to check for waving](#Step-4b:-Create-a-function-for-handData-to-check-for-waving)
+- [Objective 5: Count fingers](#Objective-5:-Count-fingers)
+  - [Step 5a: Create a function to count fingers crudely](#Step-5a:-Create-a-function-to-count-fingers-crudely)
+  - [Step 5b: Create a list of gestures to choose the most frequent one](#Step-5b:-Create-a-list-of-gestures-to-choose-the-most-frequent-one)  
 
-## Pre-coding: Get acquainted and plan ahead
+## Objective 0: Get acquainted and plan ahead</summary>
 Before we do any coding, it's important to think of how we want to approach the task, especially 
 because there are multiple ways to code a computer vision program like this one.  
 
@@ -29,9 +47,8 @@ For recognizing gestures, I found the simplest strategy is to have a "gesture re
 The priority aspect is important since, if the user's hand is waving quickly, we shouldn't waste time trying to 
 count the number of fingers extended (especially since they'll likely be too blurry to count reliably anyway).  
   
-  
-  
-## Objective 1: Write the base for the program (take input, show region of interest as a square)  
+## Objective 1: Write the base for the program  
+
 First things first: we have to lay out the structure for our program and create the tools that we'll use later on. 
 For example, we know we're gonna hold the background as a variable, and we could make holding hand data easier by 
 storing it in variables contained inside an object.  We also have to import the libraries we're going to use, too!  
@@ -60,7 +77,7 @@ BG_WEIGHT = 0.5
 OBJ_THRESHOLD = 18
 ```
 
-### Step 1b: Write a loop to get frames from the camera while the program runs  
+### Step 1b: Write a loop to get camera input  
 Before we can get into the background subtraction, thresholding, and more, we have to write code 
 so that the camera can actually take input for processing.  
 
@@ -97,7 +114,7 @@ makes it confusing to use. Let's add these 2 lines right after the line beginnin
 
 Your program should now work like a mirror. Perfect!  
 
-### Step 1c: Set up variables to be used for image analysis  
+### Step 1c: Set up variables for image analysis  
 
 The last step is just to set up the region of interest's bounds and initialize frames_elapsed. 
 Within the main function, before even taking the capture of the screen, type this:  
@@ -126,7 +143,7 @@ a square drawn where the user should put their hand. Check out [checkpoint 1 to 
   
   
   
-## Objective 2: Create tools to hold hand data and write on screen  
+## Objective 2: Create tools for hand data and screen writing  
 
 Now that we have our base input code working, let's continue building our foundation. Before we 
 jump into coding the background differencing, finger counting, etc. let's start organized so we 
@@ -415,7 +432,7 @@ We will call the constructor if the object is null, and update its data if it al
         hand.update(top, bottom, left, right)
 ```  
 
-### Step 4b: Create a function for the handData object to check for waving  
+### Step 4b: Create a function for handData to check for waving  
 
 It would be difficult to check for waving every frame, as that would require the user to wave 
 their hand VERY quickly over a large area every single frame. Instead, let's check every eigth 
@@ -464,6 +481,10 @@ try [referencing the checkpoint4 Jupyter Notebook](checkpoint4.ipynb).
 
 
 ## Objective 5: Count fingers  
+
+Now it's time to finish our project by creating the functions that count fingers. We'll use the 
+system described before of drawing a line below the finger tops and counting the number of 
+intersections we make.  
 
 ### Step 5a: Create a function to count fingers crudely  
 
