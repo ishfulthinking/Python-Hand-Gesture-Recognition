@@ -580,3 +580,5 @@ chooses the most frequent after 12 frames, then clears the list:
 
 And that's it! You're finished creating a program to recognize gestures using the OpenCV library 
 in Python. Congrats! (If you have any hiccups with the code, [reference checkpoint5](checkpoint5.ipynb))  
+
+| [Pointing](media/pointing.gif) | [Scissors](media/scissors.gif) | [Rock](media/rock.gif) | [Waving](media/waving.gif) |
