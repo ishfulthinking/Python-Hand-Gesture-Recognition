@@ -10,6 +10,7 @@ The easiest way to get this running is to use a Jupyter Notebook, which allows y
 code in modules and run each individually or as a group.  
 
 ## Table of Contents
+<b>
 - [Objective 0: Get acquainted and plan ahead](#Objective-0:-Get-acquainted-and-plan-ahead)
 - [Objective 1: Write the base for the program](#Objective-1:-Write-the-base-for-the-program)
   - [Step 1a: Import libraries and create global variables](#Step-1a:-Import-libraries-and-create-global-variables)
@@ -28,8 +29,9 @@ code in modules and run each individually or as a group.
 - [Objective 5: Count fingers](#Objective-5:-Count-fingers)
   - [Step 5a: Create a function to count fingers crudely](#Step-5a:-Create-a-function-to-count-fingers-crudely)
   - [Step 5b: Create a list of gestures to choose the most frequent one](#Step-5b:-Create-a-list-of-gestures-to-choose-the-most-frequent-one)  
+</b>
 
-## Objective 0: Get acquainted and plan ahead</summary>
+## Objective 0: Get acquainted and plan ahead
 Before we do any coding, it's important to think of how we want to approach the task, especially 
 because there are multiple ways to code a computer vision program like this one.  
 
